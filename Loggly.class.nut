@@ -75,8 +75,7 @@ class Loggly {
                 _numLogs += numLogs;
 
                 if (_onError != null) {
-                    local __this = this;
-                    imp.wakeup(0, function() { __this._onError(resp); });
+                    imp.wakeup(0, function() { _onError(resp); }.bindenv(this));
                 } else {
                     server.error("Loggly send failed:");
                     server.error("   " + resp.statuscode + " - " + resp.body);
