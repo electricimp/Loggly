@@ -1,7 +1,3 @@
-// Copyright (c) 2015 Electric Imp
-// This file is licensed under the MIT License
-// http://opensource.org/licenses/MIT
-
 class Loggly {
     static version = [1,0,0];
 
@@ -21,6 +17,7 @@ class Loggly {
     _logString = null;      // The current set of logs that are queued for send
 
     _onError = null;        // The onError handler for when there's a problem with the logs
+    _timer = null;          // The watchdog's timer object
 
     constructor(token, options = {}) {
         _token = token;
@@ -37,8 +34,8 @@ class Loggly {
         // initialize _logString
         _logString = "";
 
-        // Start the watchdog loop
-        imp.wakeup(_timeout, _watchdog.bindenv(this));
+        // Start the send loop
+        _timer = imp.wakeup(_timeout, send.bindenv(this));
     }
 
     function log(msg, ...) {
@@ -54,6 +51,10 @@ class Loggly {
     }
 
     function send() {
+        // reset the timer object
+        if (_timer != null) imp.cancelwakeup(_timer);
+        _timer = imp.wakeup(_timeout, send.bindenv(this));
+
         // if there's nothing to log, we're done
         if (_logString.len() == 0) return;
 
@@ -75,13 +76,27 @@ class Loggly {
                     server.error("   " + resp.statuscode + " - " + resp.body);
                 }
             } else {
+                server.log("success!");
                 // nothing
             }
         }.bindenv(this));
     }
 
+    function len() {
+        return split(_logString, "\n").len();
+    }
+
+
     function onError(cb) {
         _onError = cb;
+    }
+
+    static function ISODateTime(ts = null) {
+        if (ts == null) ts = time();
+        local datetime = date(ts);
+        return format("%04i-%02i-%02iT%02i:%02i:%02iZ",
+            datetime.year, datetime.month+1, datetime.day,
+            datetime.hour, datetime.min, datetime.sec);
     }
 
     //-------------------- PRIVATE METHODS --------------------//
@@ -90,7 +105,7 @@ class Loggly {
         local json = {
             "id": _id,
             "level": level,
-            "timestamp": _generateISODateTime()
+            "timestamp": ISODateTime()
         };
 
         if (typeof(msg) == "string") {
@@ -117,21 +132,7 @@ class Loggly {
         _logString += json + "\n";
     }
 
-    function _generateISODateTime(ts = null) {
-        if (ts == null) ts = time();
-        local datetime = date(ts);
-        return format("%04i-%02i-%02iT%02i:%02i:%02iZ",
-            datetime.year, datetime.month+1, datetime.day,
-            datetime.hour, datetime.min, datetime.sec);
-    }
-
-    function _watchdog() {
-        imp.wakeup(_timeout, _watchdog.bindenv(this));
-        send();
-    }
-
     function _generateUrl() {
         return format(LOG_URL, _token, _tag);
     }
-
 }
