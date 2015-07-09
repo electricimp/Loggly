@@ -15,6 +15,7 @@ class Loggly {
 
     _url = null;            // The URL we send reqeusts to
     _logString = null;      // The current set of logs that are queued for send
+    _numLogs = null;        // The current nubmer of log messages in the queue
 
     _onError = null;        // The onError handler for when there's a problem with the logs
     _timer = null;          // The watchdog's timer object
@@ -31,8 +32,9 @@ class Loggly {
         // Generate the URL
         _url = _generateUrl()
 
-        // initialize _logString
+        // initialize logs
         _logString = "";
+        _numLogs = 0;
 
         // Start the send loop
         _timer = imp.wakeup(_timeout, send.bindenv(this));
@@ -56,17 +58,21 @@ class Loggly {
         _timer = imp.wakeup(_timeout, send.bindenv(this));
 
         // if there's nothing to log, we're done
-        if (_logString.len() == 0) return;
+        if (_numLogs == 0) return;
 
         // Grab the logs, and clear
         local logs = _logString;
+        local numLogs = _numLogs;
+
         _logString = "";
+        _numLogs = 0;
 
         // Send the logs
         http.post(_url, {}, logs).sendasync(function(resp) {
             if (resp.statuscode != 200) {
                 // If an error occured, add the logs back in
                 _logString += logs;
+                _numLogs += numLogs;
 
                 if (_onError != null) {
                     local __this = this;
@@ -76,14 +82,13 @@ class Loggly {
                     server.error("   " + resp.statuscode + " - " + resp.body);
                 }
             } else {
-                server.log("success!");
                 // nothing
             }
         }.bindenv(this));
     }
 
     function len() {
-        return split(_logString, "\n").len();
+        return _numLogs;
     }
 
 
@@ -110,9 +115,6 @@ class Loggly {
 
         if (typeof(msg) == "string") {
             local args = [this, msg];
-            if (argv.len() > 0 && typeof(argv[0]) == "array") {
-                argv = argv[0];
-            }
             args.extend(argv);
             // If it's a string, treat as format
             json.msg <- format.acall(args);
@@ -130,6 +132,7 @@ class Loggly {
         if (_debug) server.log(json);
 
         _logString += json + "\n";
+        _numLogs++;
     }
 
     function _generateUrl() {
