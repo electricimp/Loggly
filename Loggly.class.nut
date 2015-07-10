@@ -1,5 +1,5 @@
 class Loggly {
-    static version = [1,0,0];
+    static version = [1,0,1];
 
     static LOG_URL = "https://logs-01.loggly.com/bulk/%s/tag/%s/"
 
@@ -9,8 +9,9 @@ class Loggly {
 
     _token = null;          // The customer token
     _id = null;             // ID (default: agentID)
-    _tag = null;            // The log Tag (default: electricimp)
+    _tags = null;           // The log Tag (default: electricimp)
     _timeout = null;        // Send frequency (default: 15s)
+    _limit = null;          // Max logs we collect before sending (default: 100)
     _debug = null;          // whether or not to server.log (default: true)
 
     _url = null;            // The URL we send reqeusts to
@@ -25,8 +26,9 @@ class Loggly {
 
         // Grab any settings
         _id = "id" in options ? options.id : split(http.agenturl(), "/").pop();
-        _tag = "tag" in options ? options.tag : "electricimp"
+        _tags = "tags" in options ? options.tags : "electricimp"
         _timeout = "timeout" in options ? options.timeout : 15;
+        _limit = "limit" in options ? options.limit : 100;
         _debug = "debug" in options ? options.debug : true;
 
         // Generate the URL
@@ -35,9 +37,6 @@ class Loggly {
         // initialize logs
         _logString = "";
         _numLogs = 0;
-
-        // Start the send loop
-        _timer = imp.wakeup(_timeout, send.bindenv(this));
     }
 
     function log(msg, ...) {
@@ -53,12 +52,12 @@ class Loggly {
     }
 
     function send() {
-        // reset the timer object
-        if (_timer != null) imp.cancelwakeup(_timer);
-        _timer = imp.wakeup(_timeout, send.bindenv(this));
+        server.log("WARNING: Loggly.send() is deprecated and has been replaced with .flush()");
+        flush();
+    }
 
-        // if there's nothing to log, we're done
-        if (_numLogs == 0) return;
+    function flush() {
+        _timer = null;
 
         // Grab the logs, and clear
         local logs = _logString;
@@ -69,10 +68,13 @@ class Loggly {
 
         // Send the logs
         http.post(_url, {}, logs).sendasync(function(resp) {
-            if (resp.statuscode != 200) {
+            if (resp.statuscode < 200 || resp.statuscode >= 300) {
                 // If an error occured, add the logs back in
                 _logString += logs;
                 _numLogs += numLogs;
+
+                // restart the timer if it hasn't already been restarted
+                if (_timer == null) _timer = imp.wakeup(_timeout, flush.bindenv(this));
 
                 if (_onError != null) {
                     imp.wakeup(0, function() { _onError(resp); }.bindenv(this));
@@ -106,6 +108,9 @@ class Loggly {
     //-------------------- PRIVATE METHODS --------------------//
     // Addes a log to the _logString
     function _push(level, msg, argv = []) {
+        // Start the timer if we haven't already
+        if (_timer == null) _timer = imp.wakeup(_timeout, flush.bindenv(this));
+
         local json = {
             "id": _id,
             "level": level,
@@ -132,9 +137,12 @@ class Loggly {
 
         _logString += json + "\n";
         _numLogs++;
+
+        // If we hit our log limit, send
+        if (_numLogs >= _limit) flush();
     }
 
     function _generateUrl() {
-        return format(LOG_URL, _token, _tag);
+        return format(LOG_URL, _token, _tags);
     }
 }

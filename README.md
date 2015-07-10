@@ -2,7 +2,9 @@
 
 This library wraps the [Loggly](http://www.loggly.com) cloud-based logging service.
 
-The Loggly library allows you to easily interface with the Loggly API, prepopulates your log messages with a variety of useful metadata, and bulk-sends your log messages to cut down on your agents' outbound HTTP traffic.
+The Loggly class automatically adds metadata to your log messages, and handles efficently sending log messages with the [Loggly Bulk Endpoint](https://www.loggly.com/docs/http-bulk-endpoint/).
+
+By default, the Loggly class will send log messages every 15 seconds, or when it has accumulated 100 log messages (whichever occurs first). The value of these parameters can be changed using the `timeout` and `limit` constructor options (see below).
 
 ## constructor(*customerToken, [options]*)
 To create a new Loggly object you will need your customer token. You may also supply an optional table with any of the following keys to further configure the Loggly object:
@@ -10,14 +12,23 @@ To create a new Loggly object you will need your customer token. You may also su
 | key     | default     | notes                                             |
 | ------- | ----------- | ------------------------------------------------- |
 | id      | {agentId}   | A unique ID for the device/agent                  |
-| tag     | electricimp | A comma separated list of tags for all log events |
+| tags    | electricimp | A comma separated list of tags for all log events |
 | timeout | 15          | Time between sends (in seconds)                   |
+| limit   | 100         | Max # of logs that will be queued before sending  |
 | debug   | true        | Enables / disables server.log'ing log messages    |
 
 ```squirrel
 // bulk send logs every minute
 loggly <- Loggly("<-- CUSTOMER_TOKEN -->", { "timeout": 60 });
 ```
+
+### Tags
+
+Tags are a method of adding organization to your log events to aid in segmentation & filtering.
+
+Tags can be used to form [Source Groups](https://www.loggly.com/docs/source-groups/), which will help segment your data & narrow down search results. It’s also possible to search your log data for tags with a search query.
+
+For more information about tags, visit Loggly's [Support Center](https://www.loggly.com/docs/tags/).
 
 ## Logging Methods
 
@@ -75,24 +86,7 @@ loggly.log(123.456);
 
 Returns the number of logs that are currently queued to send.
 
-```squirrel
-// Send logs hourly
-loggly <- Loggly("<-- CUSTOMER_TOKEN -->", { "timeout": 3600 });
-
-// Periodically check how many logs we have, and send if > 100
-function loop() {
-    imp.wakeup(15, loop);
-    if (loggly.len() > 100) loggly.send();
-}
-
-loop();
-```
-
-## send()
-
-The send method immediatly sends any queued logs and resets the timeout.
-
-*See len() for example usage.*
+*See onError for example usage.*
 
 ## onError(*callback*)
 
@@ -101,8 +95,31 @@ The onError handler allows you to attach an error handler (the callback) to the 
 The onError callback takes a single parameter - an HTTP Response table containing the `statuscode`, `body`, and `headers` (see [http.sendasync](https://electricimp.com/docs/api/httprequest/sendasync/) for more information).
 
 ```squirrel
+loggly <- Loggly("<-- CUSTOMER_TOKEN -->");
+
 loggly.onError(function(resp) {
-    server.error(resp.statuscode + " - " + resp.body);
+    server.error("Failed to send messages to Loggly - " + resp.body);
+    server.error(loggly.len() " messages queued for next send.");
+});
+```
+
+## flush()
+
+The *flush* method will immediatly send any queued message to the Loggly service. Typical usage of the Loggly class should not involve calling *flush* - however when [server.onshutdown()](https://electricimp.com/docs/api/server/onshutdown/) is implemented, it would be a good idea to flush logs before calling [server.restart()](https://electricimp.com/docs/api/server/restart/).
+
+```squirrel
+server.onshutdown(function(shutdownReasonCode) {
+    // Log a shutdown message
+    loggly.log({
+        "msg": "Shutting Down",
+        "reason": shutdownReasonCode
+    });
+    // Flush the messages
+    loggly.flush();
+
+    // Other shutdown code..
+
+    server.resart();
 });
 ```
 
