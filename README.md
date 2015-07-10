@@ -12,7 +12,7 @@ To create a new Loggly object you will need your customer token. You may also su
 | key     | default     | notes                                             |
 | ------- | ----------- | ------------------------------------------------- |
 | id      | {agentId}   | A unique ID for the device/agent                  |
-| tag     | electricimp | A comma separated list of tags for all log events |
+| tags    | electricimp | A comma separated list of tags for all log events |
 | timeout | 15          | Time between sends (in seconds)                   |
 | limit   | 100         | Max # of logs that will be queued before sending  |
 | debug   | true        | Enables / disables server.log'ing log messages    |
@@ -21,6 +21,14 @@ To create a new Loggly object you will need your customer token. You may also su
 // bulk send logs every minute
 loggly <- Loggly("<-- CUSTOMER_TOKEN -->", { "timeout": 60 });
 ```
+
+### Tags
+
+Tags are a method of adding organization to your log events to aid in segmentation & filtering.
+
+Tags can be used to form [Source Groups](https://www.loggly.com/docs/source-groups/), which will help segment your data & narrow down search results. It’s also possible to search your log data for tags with a search query.
+
+For more information about tags, visit Loggly's [Support Center](https://www.loggly.com/docs/tags/).
 
 ## Logging Methods
 

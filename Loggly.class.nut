@@ -1,5 +1,5 @@
 class Loggly {
-    static version = [1,0,0];
+    static version = [1,0,1];
 
     static LOG_URL = "https://logs-01.loggly.com/bulk/%s/tag/%s/"
 
@@ -9,7 +9,7 @@ class Loggly {
 
     _token = null;          // The customer token
     _id = null;             // ID (default: agentID)
-    _tag = null;            // The log Tag (default: electricimp)
+    _tags = null;           // The log Tag (default: electricimp)
     _timeout = null;        // Send frequency (default: 15s)
     _limit = null;          // Max logs we collect before sending (default: 100)
     _debug = null;          // whether or not to server.log (default: true)
@@ -26,7 +26,7 @@ class Loggly {
 
         // Grab any settings
         _id = "id" in options ? options.id : split(http.agenturl(), "/").pop();
-        _tag = "tag" in options ? options.tag : "electricimp"
+        _tags = "tags" in options ? options.tags : "electricimp"
         _timeout = "timeout" in options ? options.timeout : 15;
         _limit = "limit" in options ? options.limit : 100;
         _debug = "debug" in options ? options.debug : true;
@@ -51,8 +51,12 @@ class Loggly {
         _push(ERR, msg, vargv);
     }
 
+    function send() {
+        server.log("WARNING: Loggly.send() is deprecated and has been replaced with .flush()");
+        flush();
+    }
+
     function flush() {
-        // Clear the timer
         _timer = null;
 
         // Grab the logs, and clear
@@ -87,6 +91,7 @@ class Loggly {
     function len() {
         return _numLogs;
     }
+
 
     function onError(cb) {
         _onError = cb;
@@ -138,6 +143,6 @@ class Loggly {
     }
 
     function _generateUrl() {
-        return format(LOG_URL, _token, _tag);
+        return format(LOG_URL, _token, _tags);
     }
 }
