@@ -1,5 +1,5 @@
 class Loggly {
-    static version = [1,0,1];
+    static version = [1,1,0];
 
     static LOG_URL = "https://logs-01.loggly.com/bulk/%s/tag/%s/"
 
