@@ -1,4 +1,4 @@
-# Loggly
+# Loggly 1.1.0
 
 This library wraps the [Loggly](http://www.loggly.com) cloud-based logging service.
 
@@ -103,23 +103,43 @@ loggly.onError(function(resp) {
 });
 ```
 
-## flush()
+## flush(*[callback]*)
 
-The *flush* method will immediatly send any queued message to the Loggly service. Typical usage of the Loggly class should not involve calling *flush* - however when [server.onshutdown()](https://electricimp.com/docs/api/server/onshutdown/) is implemented, it would be a good idea to flush logs before calling [server.restart()](https://electricimp.com/docs/api/server/restart/).
+The *flush* method will immediatly send any queued message to the Loggly service. An optional *callback* parameter can be passed to the *flush* method that will be invoked upon completion of the request.
+
+The callback method takes two parameters - *error* (a string describing the error), and *response* (an [HTTP Response table](https://electricimp.com/docs/api/httprequest/sendasync/)). If the request was successful, the *error* parameter will be `null`.
+
+Typical usage of the Loggly class should not involve calling *flush* - however when [server.onshutdown()](https://electricimp.com/docs/api/server/onshutdown/) is implemented, it would be a good idea to flush logs before calling [server.restart()](https://electricimp.com/docs/api/server/restart/).
 
 ```squirrel
+function flushAndRestart(attempt = 0) {
+    // If we've tried and failed 5 times, give up and restart
+    if (attempt >= 5) {
+        server.restart();
+    }
+
+    // Otherwise, try flushing the messages
+    loggly.flush(function(err, resp) {
+        if (err != null) {
+            // If it failed, try again in 10 seconds
+            imp.wakeup(10, function() { flushAndRestart(attempt+1);; });
+            return;
+        }
+
+        // If we sent the logs, restart
+        server.restart();
+    });
+}
+
 server.onshutdown(function(shutdownReasonCode) {
     // Log a shutdown message
     loggly.log({
         "msg": "Shutting Down",
         "reason": shutdownReasonCode
     });
-    // Flush the messages
-    loggly.flush();
 
-    // Other shutdown code..
-
-    server.resart();
+    // Flush the loggly messages, and restart
+    flushAndRestart();
 });
 ```
 

@@ -1,5 +1,5 @@
 class Loggly {
-    static version = [1,0,1];
+    static version = [1,1,0];
 
     static LOG_URL = "https://logs-01.loggly.com/bulk/%s/tag/%s/"
 
@@ -56,7 +56,11 @@ class Loggly {
         flush();
     }
 
-    function flush() {
+    function flush(cb = null) {
+        // Clear the timer, if it exists
+        if (_timer != null) {
+            imp.cancelwakeup(_timer);
+        }
         _timer = null;
 
         // Grab the logs, and clear
@@ -73,17 +77,29 @@ class Loggly {
                 _logString += logs;
                 _numLogs += numLogs;
 
-                // restart the timer if it hasn't already been restarted
+                // Restart the timer if it hasn't already been restarted
                 if (_timer == null) _timer = imp.wakeup(_timeout, flush.bindenv(this));
 
+                // Invoke the callback, if it exists
+                if (cb != null) {
+                    imp.wakeup(0, function() { cb(resp.body, resp); });
+                    return;
+                }
+
+                // If there's no callback, but there is an onError handler, invoke that
                 if (_onError != null) {
                     imp.wakeup(0, function() { _onError(resp); }.bindenv(this));
-                } else {
-                    server.error("Loggly send failed:");
-                    server.error("   " + resp.statuscode + " - " + resp.body);
+                    return;
                 }
+
+                // Otherwise, just log the message
+                server.error("Loggly send failed:");
+                server.error("   " + resp.statuscode + " - " + resp.body);
             } else {
-                // nothing
+                // Invoke the callback, if it exists
+                if (cb != null) {
+                    imp.wakeup(0, function() { cb(null, resp); });
+                }
             }
         }.bindenv(this));
     }
