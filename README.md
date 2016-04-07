@@ -44,7 +44,7 @@ There are three methods (representing three log levels) that can be used to log 
 
 All three of the logging methods can be invoked in the following ways:
 
-### log/warn/err(*table*)
+### log/warn/error(*table*)
 
 When a table is passed into one of the logging methods, each key/value pair will be added to the log message. If desired, the metadata can be overriden by including keys present in the metadata (i.e. `id`, `level`, `timestamp`).
 
@@ -62,7 +62,7 @@ device.on("data", function(data) {
 });
 ```
 
-### log/warn/err(*string, [...]*)
+### log/warn/error(*string, [...]*)
 
 A string, or a [format string](https://electricimp.com/docs/squirrel/string/format/) with parameters can also be passed into the logging methods. When a string or format string is passed into the logging methods, it will be added to the log message with a key of `msg`.
 
@@ -74,7 +74,7 @@ loggly.log("Hello World!");
 loggly.log("%s %s", "Hello", "World!");
 ```
 
-### log/warn/err(*object*)
+### log/warn/error(*object*)
 
 Any other object passed into logging methods will be cast as a string with the `.tostring()` method and added to the log message with a key of `msg`.
 
