@@ -32,7 +32,7 @@ For more information about tags, visit Loggly's [Support Center](https://www.log
 
 ## Logging Methods
 
-There are three methods (representing three log levels) that can be used to log messages - `log`, `warn`, and `err`. When any of the logging methods are called, the following set of metadata is added to the message:
+There are three methods (representing three log levels) that can be used to log messages - `log`, `warn`, and `error`. When any of the logging methods are called, the following set of metadata is added to the message:
 
 ```squirrel
 {
