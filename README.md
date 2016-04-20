@@ -99,7 +99,7 @@ loggly <- Loggly("<-- CUSTOMER_TOKEN -->");
 
 loggly.onError(function(resp) {
     server.error("Failed to send messages to Loggly - " + resp.body);
-    server.error(loggly.len() " messages queued for next send.");
+    server.error(loggly.len() + " messages queued for next send.");
 });
 ```
 
