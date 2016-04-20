@@ -6,6 +6,8 @@ The Loggly class automatically adds metadata to your log messages, and handles e
 
 By default, the Loggly class will send log messages every 15 seconds, or when it has accumulated 100 log messages (whichever occurs first). The value of these parameters can be changed using the `timeout` and `limit` constructor options (see below).
 
+To add this library to your project, add #require "Loggly.class.nut:1.1.0" to the top of your agent code
+
 ## constructor(*customerToken, [options]*)
 To create a new Loggly object you will need your customer token. You may also supply an optional table with any of the following keys to further configure the Loggly object:
 
